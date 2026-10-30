@@ -1,0 +1,37 @@
+name: e2e
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/packages/quality/testing/playwright/.playwright-browsers
+
+jobs:
+  e2e:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install and build
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm turbo run build --filter=n8n... --filter=n8n-playwright...
+
+      - name: Install browsers
+        run: pnpm turbo run install-browsers --filter=n8n-playwright
+
+      - name: Run e2e tests
+        run: pnpm --filter=n8n-playwright test:local tests/e2e/credentials/credential-replacement.spec.ts
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            packages/quality/testing/playwright/playwright-report/
+            packages/quality/testing/playwright/test-results/
+          retention-days: 30
